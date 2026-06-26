@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TutorHub
 
-## Getting Started
+A website for tuition teachers to share notes, daily practice problems (DPPs) and lectures with their students, organized by subject.
 
-First, run the development server:
+## How it works
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- `/` — landing page: choose "Student" or "Teacher"
+- **Teachers** apply at `/signup` (name, email, password, subjects taught) and stay **pending** until the admin approves them at `/admin`. Only approved teachers can log in.
+- Once approved, a teacher's dashboard has two tabs: **Resources** (upload notes/DPP/lectures into their assigned subjects) and **My Students** (add a student by name + email — no password needed from the teacher).
+- **Students** never self-signup. A teacher adds them by name + email. The student goes to `/login`, enters that email, and — the first time only — is prompted to set their own password right there. Every login after that just asks for email then password as usual.
+- **Admin** logs in at `/login` using the email/password set as `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `.env.local` — no signup needed. The admin dashboard approves/rejects/revokes teacher accounts.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Create a free MongoDB Atlas cluster at https://www.mongodb.com/cloud/atlas/register, then get its connection string (Database > Connect > Drivers).
+3. Paste the connection string into `.env.local` as `MONGODB_URI`. `JWT_SECRET`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` are already filled in — change `ADMIN_PASSWORD` if you want.
+4. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+5. Open http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Uploaded files are stored on disk in `public/uploads/<subject>/<type>/`.
