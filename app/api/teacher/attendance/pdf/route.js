@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import PDFDocument from "pdfkit";
 import { getSession } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
@@ -37,6 +35,69 @@ function buildPdfBuffer({ subjectName, className, dateStr, students }) {
 
     doc.end();
   });
+}
+
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return Response.json({ error: "Submission ID is required." }, { status: 400 });
+    }
+
+    await connectDB();
+    const submission = await AttendanceSubmission.findById(id).lean();
+    if (!submission) {
+      return Response.json({ error: "Attendance report not found." }, { status: 404 });
+    }
+
+    const { subject, class: classSlug, date, teacher: teacherId } = submission;
+
+    const students = await User.find({
+      role: "student",
+      addedBy: teacherId,
+      subjects: subject,
+      class: classSlug,
+    })
+      .select("name")
+      .sort({ name: 1 })
+      .lean();
+
+    const records = await Attendance.find({
+      subject,
+      date: new Date(date),
+      student: { $in: students.map((s) => s._id) },
+    }).lean();
+    const presentByStudent = Object.fromEntries(records.map((r) => [r.student.toString(), r.present]));
+
+    const [subjects, classes] = await Promise.all([getAllSubjects(), getAllClasses()]);
+    const subjectName = subjects.find((s) => s.slug === subject)?.name || subject;
+    const className = classes.find((c) => c.slug === classSlug)?.name || classSlug;
+
+    const pdfBuffer = await buildPdfBuffer({
+      subjectName,
+      className,
+      dateStr: new Date(date).toLocaleDateString(),
+      students: students.map((s) => ({ name: s.name, present: presentByStudent[s._id.toString()] ?? null })),
+    });
+
+    let safeDateStr = "report";
+    try {
+      safeDateStr = new Date(date).toISOString().slice(0, 10);
+    } catch (e) {
+      // ignore formatting issues
+    }
+
+    return new Response(pdfBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="attendance-${safeDateStr}.pdf"`,
+      },
+    });
+  } catch (err) {
+    console.error("PDF generation on-the-fly failed:", err);
+    return Response.json({ error: `PDF generation failed: ${err.message}` }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
@@ -78,40 +139,30 @@ export async function POST(request) {
     }).lean();
     const presentByStudent = Object.fromEntries(records.map((r) => [r.student.toString(), r.present]));
 
-    const [subjects, classes] = await Promise.all([getAllSubjects(), getAllClasses()]);
-    const subjectName = subjects.find((s) => s.slug === subject)?.name || subject;
-    const className = classes.find((c) => c.slug === classSlug)?.name || classSlug;
-
-    const pdfBuffer = await buildPdfBuffer({
-      subjectName,
-      className,
-      dateStr: new Date(date).toLocaleDateString(),
-      students: students.map((s) => ({ name: s.name, present: presentByStudent[s._id.toString()] ?? null })),
-    });
-
-    const filename = `${date}-${Date.now()}.pdf`;
-    const dir = path.join(process.cwd(), "public", "uploads", "attendance", classSlug, subject);
-    await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, filename), pdfBuffer);
-
-    const pdfUrl = `/uploads/attendance/${classSlug}/${subject}/${filename}`;
     const presentCount = students.filter((s) => presentByStudent[s._id.toString()] === true).length;
 
-    // One submission per teacher+subject+class+date — resubmitting updates it
-    // in place rather than creating a duplicate entry.
-    const submission = await AttendanceSubmission.findOneAndUpdate(
+    // Create/update submission document (temporary pdfUrl as we need the ID)
+    let submission = await AttendanceSubmission.findOneAndUpdate(
       { teacher: session.id, subject, class: classSlug, date: new Date(date) },
       {
         teacher: session.id,
         subject,
         class: classSlug,
         date: new Date(date),
-        pdfUrl,
+        pdfUrl: "temp",
         presentCount,
         totalCount: students.length,
         submittedAt: new Date(),
       },
       { upsert: true, returnDocument: "after" }
+    );
+
+    const pdfUrl = `/api/teacher/attendance/pdf?id=${submission._id}`;
+
+    submission = await AttendanceSubmission.findByIdAndUpdate(
+      submission._id,
+      { pdfUrl },
+      { new: true }
     );
 
     return Response.json({ pdfUrl, submittedAt: submission.submittedAt });
@@ -120,3 +171,4 @@ export async function POST(request) {
     return Response.json({ error: `PDF generation failed: ${err.message}` }, { status: 500 });
   }
 }
+

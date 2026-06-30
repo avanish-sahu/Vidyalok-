@@ -251,7 +251,12 @@ export default function AttendancePanel({ subjects, classSlug }) {
                       </p>
                     </div>
                     <div className="resource-actions">
-                      <a className="btn btn-secondary btn-small" href={sub.pdfUrl} target="_blank" rel="noopener noreferrer">
+                      <a
+                        className="btn btn-secondary btn-small"
+                        href={sub.pdfUrl && sub.pdfUrl.startsWith("/uploads/") ? `/api/teacher/attendance/pdf?id=${sub._id}` : sub.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         Download PDF
                       </a>
                     </div>
