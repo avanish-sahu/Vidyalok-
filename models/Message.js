@@ -6,6 +6,7 @@ const MessageSchema = new mongoose.Schema(
     teacherName: { type: String, required: true },
     audience: { type: String, enum: ["all", "subject"], required: true },
     subject: { type: String, default: null }, // subject slug, only when audience === "subject"
+    class: { type: String, default: null }, // class slug; null = sent from General, reaches every class
     text: { type: String, required: true, trim: true },
   },
   { timestamps: true }

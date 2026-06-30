@@ -15,6 +15,8 @@ const UserSchema = new mongoose.Schema(
       },
     },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }, // teacher who added this student
+    class: { type: String, default: null }, // approved/active class slug; used for all content filtering
+    pendingClass: { type: String, default: null }, // class the student picked, awaiting teacher approval
   },
   { timestamps: true }
 );

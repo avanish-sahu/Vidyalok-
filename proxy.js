@@ -32,10 +32,17 @@ export async function proxy(request) {
     "/marks",
     "/fees",
     "/notifications",
+    "/select-class",
   ];
   if (studentAreaPrefixes.some((p) => pathname.startsWith(p))) {
     if (!role) {
       return NextResponse.redirect(new URL("/login?role=student", request.url));
+    }
+    if (role === "teacher") {
+      return NextResponse.redirect(new URL("/teacher", request.url));
+    }
+    if (role === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
   }
 
@@ -59,5 +66,6 @@ export const config = {
     "/marks/:path*",
     "/fees/:path*",
     "/notifications/:path*",
+    "/select-class/:path*",
   ],
 };

@@ -5,6 +5,7 @@ import User from "@/models/User";
 import PushSubscription from "@/models/PushSubscription";
 import { sendPushToSubscriptions } from "@/lib/push";
 import { getMessagesForStudent } from "@/lib/messages";
+import { getAllClasses } from "@/lib/classes";
 
 export async function GET() {
   const session = await getSession();
@@ -39,7 +40,7 @@ export async function POST(request) {
     return Response.json({ error: "Your teacher account is not approved." }, { status: 403 });
   }
 
-  const { audience, subject, text } = await request.json();
+  const { audience, subject, class: classField, text } = await request.json();
   if (!audience || !text) {
     return Response.json({ error: "audience and text are required." }, { status: 400 });
   }
@@ -52,18 +53,27 @@ export async function POST(request) {
     }
   }
 
+  let messageClass = null;
+  if (classField && classField !== "general") {
+    const classes = await getAllClasses();
+    if (!classes.some((c) => c.slug === classField)) {
+      return Response.json({ error: "Invalid class." }, { status: 400 });
+    }
+    messageClass = classField;
+  }
+
   const message = await Message.create({
     teacher: session.id,
     teacherName: teacher.name,
     audience,
     subject: audience === "subject" ? subject : null,
+    class: messageClass,
     text,
   });
 
-  const studentFilter =
-    audience === "all"
-      ? { role: "student", addedBy: session.id }
-      : { role: "student", addedBy: session.id, subjects: subject };
+  const studentFilter = { role: "student", addedBy: session.id };
+  if (audience === "subject") studentFilter.subjects = subject;
+  if (messageClass) studentFilter.class = messageClass;
   const students = await User.find(studentFilter).select("_id").lean();
   const studentIds = students.map((s) => s._id);
 

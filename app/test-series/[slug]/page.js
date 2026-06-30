@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import Subject from "@/models/Subject";
 import Resource from "@/models/Resource";
+import User from "@/models/User";
 import StudentLayout from "@/app/components/StudentLayout";
 import BackLink from "@/app/components/BackLink";
 import ResourceList from "@/app/components/ResourceList";
@@ -15,9 +16,13 @@ export default async function TestSeriesDetailPage({ params }) {
   const subject = await Subject.findOne({ slug }).lean();
   if (!subject) notFound();
 
-  const resources = await Resource.find({ subject: slug, type: "testseries" })
-    .sort({ createdAt: -1 })
-    .lean();
+  const filter = { subject: slug, type: "testseries" };
+  if (session.role === "student") {
+    const student = await User.findById(session.id).select("class").lean();
+    filter.$or = [{ class: null }, { class: student?.class || null }];
+  }
+
+  const resources = await Resource.find(filter).sort({ createdAt: -1 }).lean();
   const list = resources.map((r) => ({
     id: r._id.toString(),
     title: r.title,

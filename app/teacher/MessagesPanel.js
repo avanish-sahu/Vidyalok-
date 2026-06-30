@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { attachLiveRefresh } from "@/lib/liveRefresh";
 
-export default function MessagesPanel({ subjects }) {
+export default function MessagesPanel({ subjects, classSlug }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [audience, setAudience] = useState("all");
@@ -12,20 +13,30 @@ export default function MessagesPanel({ subjects }) {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
-  async function load() {
-    setLoading(true);
+  const isGeneral = classSlug === "general";
+  const classMatches = (m) => (isGeneral ? !m.class : m.class === classSlug);
+
+  async function load(silent) {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/messages");
       const data = await res.json();
-      setMessages(data.messages || []);
+      setMessages((data.messages || []).filter(classMatches));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     load();
-  }, []);
+    const id = setInterval(() => load(true), 10000);
+    const detach = attachLiveRefresh(() => load(true));
+    return () => {
+      clearInterval(id);
+      detach();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classSlug]);
 
   async function handleSend(e) {
     e.preventDefault();
@@ -36,7 +47,12 @@ export default function MessagesPanel({ subjects }) {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audience, subject: audience === "subject" ? subject : undefined, text }),
+        body: JSON.stringify({
+          audience,
+          subject: audience === "subject" ? subject : undefined,
+          class: classSlug,
+          text,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -60,7 +76,7 @@ export default function MessagesPanel({ subjects }) {
   return (
     <>
       <div className="card-block">
-        <h3>Send a message</h3>
+        <h3>Send a message {isGeneral ? "(every class)" : "to this class"}</h3>
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleSend}>
           <div className="field">
@@ -73,7 +89,7 @@ export default function MessagesPanel({ subjects }) {
                   checked={audience === "all"}
                   onChange={() => setAudience("all")}
                 />
-                All my students
+                {isGeneral ? "All my students" : "All my students in this class"}
               </label>
               <label className="checkbox-pill">
                 <input

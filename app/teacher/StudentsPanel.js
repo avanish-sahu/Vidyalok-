@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { attachLiveRefresh } from "@/lib/liveRefresh";
 
-export default function StudentsPanel({ subjects }) {
+export default function StudentsPanel({ subjects, classes, classSlug }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -13,20 +14,30 @@ export default function StudentsPanel({ subjects }) {
   const [adding, setAdding] = useState(false);
   const [justAdded, setJustAdded] = useState("");
 
-  async function loadStudents() {
-    setLoading(true);
+  async function loadStudents(silent) {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/students");
       const data = await res.json();
-      setStudents(data.students || []);
+      const inThisClass = (data.students || []).filter(
+        (s) => s.class === classSlug || s.pendingClass === classSlug
+      );
+      setStudents(inThisClass);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadStudents();
-  }, []);
+    const id = setInterval(() => loadStudents(true), 10000);
+    const detach = attachLiveRefresh(() => loadStudents(true));
+    return () => {
+      clearInterval(id);
+      detach();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classSlug]);
 
   function toggleSubject(slug) {
     setSelectedSubjects((prev) =>
@@ -42,7 +53,7 @@ export default function StudentsPanel({ subjects }) {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, subjects: selectedSubjects }),
+        body: JSON.stringify({ name, email, subjects: selectedSubjects, class: classSlug }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -65,10 +76,23 @@ export default function StudentsPanel({ subjects }) {
     return subjects.find((s) => s.slug === slug)?.name || slug;
   }
 
+  function className(slug) {
+    return classes.find((c) => c.slug === slug)?.name || slug;
+  }
+
+  async function handleClassAction(studentId, action) {
+    await fetch(`/api/students/${studentId}/class`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    loadStudents();
+  }
+
   return (
     <>
       <div className="card-block">
-        <h3>Add a student</h3>
+        <h3>Add a student to {className(classSlug)}</h3>
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleAdd}>
           <div className="field">
@@ -101,7 +125,7 @@ export default function StudentsPanel({ subjects }) {
             </div>
           </div>
           <button className="btn" type="submit" disabled={adding}>
-            {adding ? "Adding..." : "Add Student"}
+            {adding ? "Adding..." : `Add to ${className(classSlug)}`}
           </button>
         </form>
         {justAdded && (
@@ -116,12 +140,14 @@ export default function StudentsPanel({ subjects }) {
       </div>
 
       <div className="section-title">
-        <h3>Your Students ({students.length})</h3>
+        <h3>
+          {className(classSlug)} Students ({students.length})
+        </h3>
       </div>
       {loading ? (
         <p>Loading...</p>
       ) : students.length === 0 ? (
-        <div className="empty-state">You haven&apos;t added any students yet.</div>
+        <div className="empty-state">No students in {className(classSlug)} yet.</div>
       ) : (
         <div className="resource-list">
           {students.map((s) => (
@@ -131,12 +157,38 @@ export default function StudentsPanel({ subjects }) {
                 <p>{s.email}</p>
                 <div className="resource-meta">
                   {s.activated ? "Active" : "Waiting for student to set a password"}
+                  {s.class && s.class !== classSlug && ` · Currently ${className(s.class)}`}
                   {s.subjects?.length > 0 && ` · ${s.subjects.map(subjectName).join(", ")}`}
                 </div>
+                {s.pendingClass && (
+                  <div style={{ marginTop: 8 }}>
+                    <span className="badge badge-info">
+                      Requested: {className(s.pendingClass)}
+                    </span>
+                  </div>
+                )}
               </div>
-              <Link href={`/teacher/students/${s.id}`} className="btn btn-secondary btn-small">
-                Manage
-              </Link>
+              <div className="resource-actions">
+                {s.pendingClass && (
+                  <>
+                    <button
+                      className="btn btn-small"
+                      onClick={() => handleClassAction(s.id, "approve")}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="btn btn-danger btn-small"
+                      onClick={() => handleClassAction(s.id, "reject")}
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+                <Link href={`/teacher/students/${s.id}`} className="btn btn-secondary btn-small">
+                  Manage
+                </Link>
+              </div>
             </div>
           ))}
         </div>

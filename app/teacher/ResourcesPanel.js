@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { attachLiveRefresh } from "@/lib/liveRefresh";
 
 const TYPES = [
   { key: "notes", label: "Notes" },
@@ -9,7 +10,7 @@ const TYPES = [
   { key: "testseries", label: "Test Series" },
 ];
 
-export default function ResourcesPanel({ subjects, userId }) {
+export default function ResourcesPanel({ subjects, classSlug, userId }) {
   const [activeSubject, setActiveSubject] = useState(subjects[0].slug);
   const [activeType, setActiveType] = useState("notes");
   const [resources, setResources] = useState([]);
@@ -26,21 +27,29 @@ export default function ResourcesPanel({ subjects, userId }) {
   const [editDescription, setEditDescription] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  async function loadResources() {
-    setLoading(true);
+  async function loadResources(silent) {
+    if (!silent) setLoading(true);
     try {
-      const res = await fetch(`/api/resources?subject=${activeSubject}&type=${activeType}`);
+      const res = await fetch(
+        `/api/resources?subject=${activeSubject}&type=${activeType}&class=${classSlug}`
+      );
       const data = await res.json();
       setResources(data.resources || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadResources();
+    const id = setInterval(() => loadResources(true), 10000);
+    const detach = attachLiveRefresh(() => loadResources(true));
+    return () => {
+      clearInterval(id);
+      detach();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSubject, activeType]);
+  }, [activeSubject, classSlug, activeType]);
 
   async function handleUpload(e) {
     e.preventDefault();
@@ -53,6 +62,7 @@ export default function ResourcesPanel({ subjects, userId }) {
     try {
       const formData = new FormData();
       formData.append("subject", activeSubject);
+      formData.append("class", classSlug);
       formData.append("type", activeType);
       formData.append("title", title);
       formData.append("description", description);
@@ -174,7 +184,7 @@ export default function ResourcesPanel({ subjects, userId }) {
       {loading ? (
         <p>Loading...</p>
       ) : resources.length === 0 ? (
-        <div className="empty-state">Nothing uploaded yet for this subject.</div>
+        <div className="empty-state">Nothing uploaded yet for this subject and class.</div>
       ) : (
         <div className="resource-list">
           {resources.map((r) =>

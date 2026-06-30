@@ -12,6 +12,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const subject = searchParams.get("subject");
   const date = searchParams.get("date");
+  const classParam = searchParams.get("class");
   if (!subject || !date) {
     return Response.json({ error: "subject and date are required." }, { status: 400 });
   }
@@ -22,7 +23,12 @@ export async function GET(request) {
     return Response.json({ error: "You are not assigned to this subject." }, { status: 403 });
   }
 
-  const students = await User.find({ role: "student", addedBy: session.id, subjects: subject })
+  const studentFilter = { role: "student", addedBy: session.id, subjects: subject };
+  if (classParam && classParam !== "all") {
+    studentFilter.class = classParam;
+  }
+
+  const students = await User.find(studentFilter)
     .select("name email")
     .sort({ name: 1 })
     .lean();
