@@ -41,10 +41,14 @@ export async function POST(request) {
   const classField = formData.get("class");
   const title = formData.get("title");
   const description = formData.get("description") || "";
+  const videoUrl = formData.get("videoUrl");
   const file = formData.get("file");
 
-  if (!subject || !type || !title || !file) {
-    return Response.json({ error: "subject, type, title and file are required." }, { status: 400 });
+  if (!subject || !type || !title) {
+    return Response.json({ error: "subject, type, and title are required." }, { status: 400 });
+  }
+  if (!file && !videoUrl) {
+    return Response.json({ error: "Either a file or a video URL is required." }, { status: 400 });
   }
   if (!["notes", "dpp", "lecture", "testseries"].includes(type)) {
     return Response.json({ error: "Invalid resource type." }, { status: 400 });
@@ -70,12 +74,28 @@ export async function POST(request) {
     return Response.json({ error: "You are not assigned to this subject." }, { status: 403 });
   }
 
-  const validationError = validateFile(file, type);
-  if (validationError) {
-    return Response.json({ error: validationError }, { status: 400 });
-  }
+  let fileUrl = "";
+  let originalName = "";
+  let fileData = null;
+  let contentType = "";
 
-  const { fileData, contentType, originalName } = await saveUploadedFile(file, subject, type);
+  if (videoUrl) {
+    if (!videoUrl.startsWith("http://") && !videoUrl.startsWith("https://")) {
+      return Response.json({ error: "Invalid video URL. Must start with http:// or https://" }, { status: 400 });
+    }
+    fileUrl = videoUrl;
+    originalName = "Video Link";
+    contentType = "text/html";
+  } else {
+    const validationError = validateFile(file, type);
+    if (validationError) {
+      return Response.json({ error: validationError }, { status: 400 });
+    }
+    const uploaded = await saveUploadedFile(file, subject, type);
+    fileData = uploaded.fileData;
+    contentType = uploaded.contentType;
+    originalName = uploaded.originalName;
+  }
 
   const resource = await Resource.create({
     subject,
@@ -83,7 +103,7 @@ export async function POST(request) {
     type,
     title,
     description,
-    fileUrl: "temp",
+    fileUrl: videoUrl ? fileUrl : "temp",
     originalName,
     fileData,
     contentType,
@@ -91,8 +111,10 @@ export async function POST(request) {
     uploadedByName: user.name,
   });
 
-  resource.fileUrl = `/api/resources/download/${resource._id}`;
-  await resource.save();
+  if (!videoUrl) {
+    resource.fileUrl = `/api/resources/download/${resource._id}`;
+    await resource.save();
+  }
 
   return Response.json({ resource });
 }

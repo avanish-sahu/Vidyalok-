@@ -21,6 +21,8 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [lectureFormat, setLectureFormat] = useState("link"); // "link" or "file"
+  const [videoUrl, setVideoUrl] = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
@@ -41,6 +43,15 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
   }
 
   useEffect(() => {
+    setError("");
+    setTitle("");
+    setDescription("");
+    setFile(null);
+    setVideoUrl("");
+    setLectureFormat("link");
+  }, [activeType]);
+
+  useEffect(() => {
     loadResources();
     const id = setInterval(() => loadResources(true), 10000);
     const detach = attachLiveRefresh(() => loadResources(true));
@@ -53,7 +64,11 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
 
   async function handleUpload(e) {
     e.preventDefault();
-    if (!file) {
+    if (activeType === "lecture" && lectureFormat === "link" && !videoUrl) {
+      setError("Please enter a video URL.");
+      return;
+    }
+    if ((activeType !== "lecture" || lectureFormat === "file") && !file) {
       setError("Please choose a file to upload.");
       return;
     }
@@ -66,7 +81,11 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
       formData.append("type", activeType);
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("file", file);
+      if (activeType === "lecture" && lectureFormat === "link") {
+        formData.append("videoUrl", videoUrl);
+      } else {
+        formData.append("file", file);
+      }
 
       const res = await fetch("/api/resources", { method: "POST", body: formData });
       const data = await res.json();
@@ -77,6 +96,7 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
       setTitle("");
       setDescription("");
       setFile(null);
+      setVideoUrl("");
       e.target.reset();
       loadResources();
     } catch {
@@ -162,16 +182,56 @@ export default function ResourcesPanel({ subjects, classSlug, userId }) {
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          <div className="field">
-            <label htmlFor="file">{activeType === "lecture" ? "Add Lecture (video)" : "File"}</label>
-            <input
-              id="file"
-              type="file"
-              required
-              accept={activeType === "lecture" ? "video/*,.pdf" : undefined}
-              onChange={(e) => setFile(e.target.files[0])}
-            />
-          </div>
+          {activeType === "lecture" && (
+            <div className="field" style={{ marginBottom: 16 }}>
+              <label>Lecture Format</label>
+              <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "normal", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="lectureFormat"
+                    checked={lectureFormat === "link"}
+                    onChange={() => setLectureFormat("link")}
+                  />
+                  Video Link (YouTube, Drive, etc.)
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: "normal", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="lectureFormat"
+                    checked={lectureFormat === "file"}
+                    onChange={() => setLectureFormat("file")}
+                  />
+                  Upload Video File (Max 4.5MB)
+                </label>
+              </div>
+            </div>
+          )}
+
+          {activeType === "lecture" && lectureFormat === "link" ? (
+            <div className="field">
+              <label htmlFor="videoUrl">Video URL</label>
+              <input
+                id="videoUrl"
+                type="url"
+                required
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="field">
+              <label htmlFor="file">{activeType === "lecture" ? "Video File" : "File"}</label>
+              <input
+                id="file"
+                type="file"
+                required
+                accept={activeType === "lecture" ? "video/*,.pdf" : undefined}
+                onChange={(e) => setFile(e.target.files[0])}
+              />
+            </div>
+          )}
           <button className="btn" type="submit" disabled={uploading}>
             {uploading ? "Uploading..." : "Upload"}
           </button>

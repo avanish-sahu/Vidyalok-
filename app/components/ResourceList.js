@@ -18,9 +18,11 @@ export default function ResourceList({ resources, emptyLabel }) {
             <a className="btn btn-secondary btn-small" href={r.fileUrl} target="_blank" rel="noopener noreferrer">
               Open
             </a>
-            <a className="btn btn-secondary btn-small" href={r.fileUrl} download={r.originalName || true}>
-              Download
-            </a>
+            {r.fileUrl && !r.fileUrl.startsWith("http://") && !r.fileUrl.startsWith("https://") && (
+              <a className="btn btn-secondary btn-small" href={r.fileUrl} download={r.originalName || true}>
+                Download
+              </a>
+            )}
           </div>
         </div>
       ))}
