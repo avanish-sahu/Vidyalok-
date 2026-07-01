@@ -241,7 +241,8 @@ export default function MarksPanel({ subjects, classSlug }) {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     style={{
                       width: "80px",
                       padding: "6px",
@@ -250,10 +251,13 @@ export default function MarksPanel({ subjects, classSlug }) {
                       textAlign: "center"
                     }}
                     placeholder="Marks"
-                    min="0"
-                    max={totalMarks || undefined}
                     value={marks[s.id] ?? ""}
-                    onChange={(e) => handleMarkChange(s.id, e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                        handleMarkChange(s.id, val);
+                      }
+                    }}
                   />
                   <span style={{ color: "var(--muted)", fontSize: "14px" }}>
                     / {totalMarks || "—"}
