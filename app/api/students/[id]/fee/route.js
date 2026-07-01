@@ -15,8 +15,14 @@ export async function GET(request, { params }) {
   const fee = await getFee(id);
   return Response.json({
     fee: fee
-      ? { amount: fee.amount, paymentDate: fee.paymentDate, validUntil: fee.validUntil }
-      : { amount: 0, paymentDate: null, validUntil: null },
+      ? {
+          amount: fee.amount,
+          paymentDate: fee.paymentDate,
+          validUntil: fee.validUntil,
+          totalFee: fee.totalFee || 0,
+          installments: fee.installments || [],
+        }
+      : { amount: 0, paymentDate: null, validUntil: null, totalFee: 0, installments: [] },
   });
 }
 
@@ -31,22 +37,64 @@ export async function PUT(request, { params }) {
     return Response.json({ error: "Only the student's teacher can edit fees." }, { status: 403 });
   }
 
-  const { amount, paymentDate, validUntil } = await request.json();
+  const { totalFee, newInstallment, validUntil, deleteInstallmentId } = await request.json();
 
   await connectDB();
-  const fee = await Fee.findOneAndUpdate(
-    { student: id },
-    {
+  const Fee = (await import("@/models/Fee")).default;
+
+  let fee = await Fee.findOne({ student: id });
+  if (!fee) {
+    fee = new Fee({
       student: id,
-      amount: Number(amount) || 0,
-      paymentDate: paymentDate ? new Date(paymentDate) : null,
+      totalFee: Number(totalFee) || 0,
       validUntil: validUntil ? new Date(validUntil) : null,
       updatedBy: session.id,
-    },
-    { upsert: true, returnDocument: "after" }
-  );
+      installments: [],
+    });
+  }
+
+  if (totalFee !== undefined) {
+    fee.totalFee = Number(totalFee) || 0;
+  }
+  if (validUntil !== undefined) {
+    fee.validUntil = validUntil ? new Date(validUntil) : null;
+  }
+
+  if (newInstallment) {
+    const amountPaid = Number(newInstallment.amountPaid);
+    const paymentDate = newInstallment.paymentDate ? new Date(newInstallment.paymentDate) : new Date();
+    const remark = newInstallment.remark || "";
+    
+    if (amountPaid > 0) {
+      fee.installments.push({ amountPaid, paymentDate, remark });
+    }
+  }
+
+  if (deleteInstallmentId) {
+    fee.installments = fee.installments.filter((inst) => inst._id.toString() !== deleteInstallmentId);
+  }
+
+  // Recalculate amount (total paid) and latest paymentDate
+  const totalPaid = fee.installments.reduce((sum, inst) => sum + inst.amountPaid, 0);
+  fee.amount = totalPaid;
+
+  if (fee.installments.length > 0) {
+    const dates = fee.installments.map((inst) => new Date(inst.paymentDate).getTime());
+    fee.paymentDate = new Date(Math.max(...dates));
+  } else {
+    fee.paymentDate = null;
+  }
+
+  fee.updatedBy = session.id;
+  await fee.save();
 
   return Response.json({
-    fee: { amount: fee.amount, paymentDate: fee.paymentDate, validUntil: fee.validUntil },
+    fee: {
+      amount: fee.amount,
+      paymentDate: fee.paymentDate,
+      validUntil: fee.validUntil,
+      totalFee: fee.totalFee,
+      installments: fee.installments,
+    },
   });
 }
