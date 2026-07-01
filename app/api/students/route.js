@@ -48,9 +48,6 @@ export async function POST(request) {
 
   const normalizedEmail = email.toLowerCase().trim();
   const existing = await User.findOne({ email: normalizedEmail });
-  if (existing) {
-    return Response.json({ error: "An account with this email already exists." }, { status: 409 });
-  }
 
   const enrolledSubjects = Array.isArray(subjects)
     ? subjects.filter((s) => teacher.subjects?.includes(s))
@@ -63,6 +60,32 @@ export async function POST(request) {
       return Response.json({ error: "Invalid class." }, { status: 400 });
     }
     approvedClass = studentClass;
+  }
+
+  if (existing) {
+    // If the existing account is a student added by the same teacher,
+    // merge the new subjects into their record instead of rejecting.
+    if (existing.role === "student" && existing.addedBy?.toString() === session.id) {
+      const currentSubjects = existing.subjects || [];
+      const merged = [...new Set([...currentSubjects, ...enrolledSubjects])];
+      existing.subjects = merged;
+      if (approvedClass) {
+        existing.class = approvedClass;
+      }
+      await existing.save();
+
+      return Response.json({
+        student: {
+          id: existing._id,
+          name: existing.name,
+          email: existing.email,
+          subjects: existing.subjects,
+          class: existing.class,
+        },
+      });
+    }
+
+    return Response.json({ error: "An account with this email already exists." }, { status: 409 });
   }
 
   const student = await User.create({
