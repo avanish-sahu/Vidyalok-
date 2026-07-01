@@ -16,7 +16,11 @@ export default async function TeacherStudentDetailPage({ params }) {
   const teacher = await User.findById(session.id).lean();
   const student = await User.findOne({ _id: id, role: "student" }).lean();
 
-  if (!student || student.addedBy?.toString() !== session.id) {
+  const hasAccess = Array.isArray(student.addedBy)
+    ? student.addedBy.some((id) => id?.toString() === session.id)
+    : student.addedBy?.toString() === session.id;
+
+  if (!student || !hasAccess) {
     notFound();
   }
 

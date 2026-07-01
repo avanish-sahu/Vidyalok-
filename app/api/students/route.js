@@ -63,12 +63,26 @@ export async function POST(request) {
   }
 
   if (existing) {
-    // If the existing account is a student added by the same teacher,
-    // merge the new subjects into their record instead of rejecting.
-    if (existing.role === "student" && existing.addedBy?.toString() === session.id) {
+    // If the existing account is a student, we can register them for more subjects
+    // even if added by a different teacher. We add the new teacher to their addedBy list.
+    if (existing.role === "student") {
+      let addedByArray = [];
+      if (existing.addedBy) {
+        if (Array.isArray(existing.addedBy)) {
+          addedByArray = existing.addedBy.map((id) => id.toString());
+        } else {
+          addedByArray = [existing.addedBy.toString()];
+        }
+      }
+      if (!addedByArray.includes(session.id)) {
+        addedByArray.push(session.id);
+      }
+      existing.addedBy = addedByArray;
+
       const currentSubjects = existing.subjects || [];
       const merged = [...new Set([...currentSubjects, ...enrolledSubjects])];
       existing.subjects = merged;
+
       if (approvedClass) {
         existing.class = approvedClass;
       }
@@ -92,7 +106,7 @@ export async function POST(request) {
     name,
     email: normalizedEmail,
     role: "student",
-    addedBy: session.id,
+    addedBy: [session.id],
     subjects: enrolledSubjects,
     class: approvedClass,
   });
