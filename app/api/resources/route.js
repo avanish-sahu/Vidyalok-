@@ -25,7 +25,7 @@ export async function GET(request) {
   if (type) filter.type = type;
   if (classParam) filter.class = classParam === "general" ? null : classParam;
 
-  const resources = await Resource.find(filter).sort({ createdAt: -1 }).lean();
+  const resources = await Resource.find(filter).select("-fileData").sort({ createdAt: -1 }).lean();
   return Response.json({ resources });
 }
 
@@ -75,7 +75,7 @@ export async function POST(request) {
     return Response.json({ error: validationError }, { status: 400 });
   }
 
-  const { fileUrl, originalName } = await saveUploadedFile(file, subject, type);
+  const { fileData, contentType, originalName } = await saveUploadedFile(file, subject, type);
 
   const resource = await Resource.create({
     subject,
@@ -83,11 +83,16 @@ export async function POST(request) {
     type,
     title,
     description,
-    fileUrl,
+    fileUrl: "temp",
     originalName,
+    fileData,
+    contentType,
     uploadedBy: user._id,
     uploadedByName: user.name,
   });
+
+  resource.fileUrl = `/api/resources/download/${resource._id}`;
+  await resource.save();
 
   return Response.json({ resource });
 }

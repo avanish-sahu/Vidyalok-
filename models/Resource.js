@@ -9,6 +9,8 @@ const ResourceSchema = new mongoose.Schema(
     description: { type: String, trim: true, default: "" },
     fileUrl: { type: String, required: true },
     originalName: { type: String, required: true },
+    fileData: { type: Buffer },
+    contentType: { type: String },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     uploadedByName: { type: String, required: true },
   },

@@ -52,8 +52,10 @@ export async function DELETE(request, { params }) {
 
   await Resource.deleteOne({ _id: id });
 
-  const filePath = path.join(process.cwd(), "public", resource.fileUrl);
-  await unlink(filePath).catch(() => {});
+  if (resource.fileUrl && resource.fileUrl.startsWith("/uploads/")) {
+    const filePath = path.join(process.cwd(), "public", resource.fileUrl);
+    await unlink(filePath).catch(() => {});
+  }
 
   return Response.json({ ok: true });
 }
