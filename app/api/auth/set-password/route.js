@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+import * as bcrypt from "@node-rs/bcrypt";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import { setSessionCookie } from "@/lib/auth";

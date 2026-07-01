@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+import * as bcrypt from "@node-rs/bcrypt";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import { setSessionCookie } from "@/lib/auth";
@@ -28,13 +28,23 @@ export async function POST(request) {
     return Response.json({ user: { id: "admin", name: "Admin", role: "admin", subjects: [] } });
   }
 
+  const t0 = performance.now();
   await connectDB();
+  const t1 = performance.now();
+  console.log(`[Login Profile] connectDB took ${(t1 - t0).toFixed(2)}ms`);
+
   const user = await User.findOne({ email: normalizedEmail });
+  const t2 = performance.now();
+  console.log(`[Login Profile] User findOne took ${(t2 - t1).toFixed(2)}ms`);
+
   if (!user || !user.passwordHash) {
     return Response.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
+  const t3 = performance.now();
+  console.log(`[Login Profile] bcrypt.compare took ${(t3 - t2).toFixed(2)}ms`);
+
   if (!valid) {
     return Response.json({ error: "Invalid email or password." }, { status: 401 });
   }
