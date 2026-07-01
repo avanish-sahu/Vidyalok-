@@ -24,9 +24,9 @@ function buildPdfBuffer({ className, submittedAt, students, summary }) {
     doc.fontSize(12).fillColor("#000000").text("Summary", { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor("#333333");
-    doc.text(`Total Fees Required: ₹${summary.totalRequired}`);
-    doc.text(`Total Amount Collected: ₹${summary.totalPaid}`);
-    doc.text(`Total Pending: ₹${summary.totalPending}`);
+    doc.text(`Total Fees Required: Rs. ${summary.totalRequired}`);
+    doc.text(`Total Amount Collected: Rs. ${summary.totalPaid}`);
+    doc.text(`Total Pending: Rs. ${summary.totalPending}`);
     doc.moveDown(1.5);
 
     doc.fontSize(11).fillColor("#000000");
@@ -49,9 +49,9 @@ function buildPdfBuffer({ className, submittedAt, students, summary }) {
       doc.fontSize(10).fillColor("#444444");
       doc.text(`${i + 1}`, 50, currentY, { width: 35 });
       doc.text(`${s.name}`, 90, currentY, { width: 190 });
-      doc.text(`₹${s.totalFee}`, 290, currentY, { width: 90, align: "right" });
-      doc.text(`₹${s.amountPaid}`, 390, currentY, { width: 70, align: "right" });
-      doc.fillColor(pendingColor).text(`₹${s.pending}`, 465, currentY, { width: 80, align: "right" });
+      doc.text(`Rs. ${s.totalFee}`, 290, currentY, { width: 90, align: "right" });
+      doc.text(`Rs. ${s.amountPaid}`, 390, currentY, { width: 70, align: "right" });
+      doc.fillColor(pendingColor).text(`Rs. ${s.pending}`, 465, currentY, { width: 80, align: "right" });
       currentY += 20;
     });
 
@@ -61,9 +61,9 @@ function buildPdfBuffer({ className, submittedAt, students, summary }) {
     currentY += 8;
     doc.fontSize(11).fillColor("#1a1a1a");
     doc.text("TOTALS", 50, currentY, { width: 230 });
-    doc.text(`₹${summary.totalRequired}`, 290, currentY, { width: 90, align: "right" });
-    doc.text(`₹${summary.totalPaid}`, 390, currentY, { width: 70, align: "right" });
-    doc.fillColor("#cc0000").text(`₹${summary.totalPending}`, 465, currentY, { width: 80, align: "right" });
+    doc.text(`Rs. ${summary.totalRequired}`, 290, currentY, { width: 90, align: "right" });
+    doc.text(`Rs. ${summary.totalPaid}`, 390, currentY, { width: 70, align: "right" });
+    doc.fillColor("#cc0000").text(`Rs. ${summary.totalPending}`, 465, currentY, { width: 80, align: "right" });
 
     doc.end();
   });
