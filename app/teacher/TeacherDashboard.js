@@ -5,6 +5,7 @@ import ResourcesPanel from "./ResourcesPanel";
 import StudentsPanel from "./StudentsPanel";
 import MessagesPanel from "./MessagesPanel";
 import AttendancePanel from "./AttendancePanel";
+import MarksPanel from "./MarksPanel";
 
 export default function TeacherDashboard({ subjects, classes, classSlug, userId }) {
   const isGeneral = classSlug === "general";
@@ -12,6 +13,7 @@ export default function TeacherDashboard({ subjects, classes, classSlug, userId 
     { key: "resources", label: "Resources" },
     ...(isGeneral ? [] : [{ key: "students", label: "My Students" }]),
     ...(isGeneral ? [] : [{ key: "attendance", label: "Attendance" }]),
+    ...(isGeneral ? [] : [{ key: "marks", label: "Marks" }]),
     { key: "messages", label: "Messages" },
   ];
 
@@ -39,6 +41,9 @@ export default function TeacherDashboard({ subjects, classes, classSlug, userId 
       )}
       {activeTab === "attendance" && !isGeneral && (
         <AttendancePanel subjects={subjects} classSlug={classSlug} />
+      )}
+      {activeTab === "marks" && !isGeneral && (
+        <MarksPanel subjects={subjects} classSlug={classSlug} />
       )}
       {activeTab === "messages" && <MessagesPanel subjects={subjects} classSlug={classSlug} />}
     </>
