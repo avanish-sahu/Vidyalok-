@@ -74,7 +74,7 @@ export async function POST(request) {
   const studentFilter = { role: "student", addedBy: session.id };
   if (audience === "subject") studentFilter.subjects = subject;
   if (messageClass) studentFilter.class = messageClass;
-  const students = await User.find(studentFilter).select("_id").lean();
+  const students = await User.find(studentFilter).select("_id email name").lean();
   const studentIds = students.map((s) => s._id);
 
   const subscriptions = await PushSubscription.find({ student: { $in: studentIds } }).lean();
@@ -91,6 +91,31 @@ export async function POST(request) {
       await PushSubscription.deleteMany({ endpoint: { $in: deadEndpoints } });
     }
   }
+
+  // Send email notifications in the background
+  const { sendEmail } = await import("@/lib/email");
+  students.forEach((student) => {
+    if (student.email) {
+      sendEmail({
+        to: student.email,
+        subject: `New Message from ${teacher.name}`,
+        text: `Hello ${student.name},\n\nYou have received a new message from your teacher ${teacher.name}:\n\n"${text}"\n\nLog in to TutorHub to view.\n\nBest regards,\nTutorHub Team`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 5px;">
+            <h2>New Message from ${teacher.name}</h2>
+            <p>Hello <strong>${student.name}</strong>,</p>
+            <p>You have received a new message from your teacher <strong>${teacher.name}</strong>:</p>
+            <blockquote style="background-color: #f9f9f9; border-left: 4px solid #0070f3; padding: 15px; margin: 20px 0; font-style: italic;">
+              "${text}"
+            </blockquote>
+            <p>Log in to the portal to view the details.</p>
+            <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #666;">This is an automated notification from TutorHub. Please do not reply directly to this email.</p>
+          </div>
+        `,
+      }).catch((err) => console.error("Email notification sending failed:", err));
+    }
+  });
 
   return Response.json({ message, recipientCount: studentIds.length, notified });
 }
