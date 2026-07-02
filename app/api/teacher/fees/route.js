@@ -39,6 +39,12 @@ export async function GET(request) {
         totalFee: f.totalFee || 0,
         amountPaid: f.amount || 0,
         pending: Math.max(0, (f.totalFee || 0) - (f.amount || 0)),
+        installments: (f.installments || []).map((inst) => ({
+          _id: inst._id?.toString(),
+          amountPaid: inst.amountPaid,
+          paymentDate: inst.paymentDate,
+          remark: inst.remark || "",
+        })),
       },
     ])
   );
@@ -48,7 +54,7 @@ export async function GET(request) {
   let totalPending = 0;
 
   const studentsWithFees = students.map((s) => {
-    const feeData = feesByStudent[s._id.toString()] || { totalFee: 0, amountPaid: 0, pending: 0 };
+    const feeData = feesByStudent[s._id.toString()] || { totalFee: 0, amountPaid: 0, pending: 0, installments: [] };
     totalRequired += feeData.totalFee;
     totalPaid += feeData.amountPaid;
     totalPending += feeData.pending;
@@ -59,6 +65,7 @@ export async function GET(request) {
       totalFee: feeData.totalFee,
       amountPaid: feeData.amountPaid,
       pending: feeData.pending,
+      installments: feeData.installments,
     };
   });
 
@@ -71,3 +78,4 @@ export async function GET(request) {
     },
   });
 }
+
