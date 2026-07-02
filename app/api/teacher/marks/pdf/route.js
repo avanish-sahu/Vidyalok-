@@ -40,7 +40,7 @@ function buildPdfBuffer({ subjectName, className, testName, dateStr, totalMarks,
     // Draw line under header
     doc.moveDown(0.2);
     const lineY = doc.y;
-    doc.moveTo(50, lineY).lineTo(550, lineY).strokeColor("#cccccc").strokeWidth(1).stroke();
+    doc.moveTo(50, lineY).lineTo(550, lineY).strokeColor("#cccccc").lineWidth(1).stroke();
     doc.moveDown(0.5);
 
     // Table Rows
@@ -74,7 +74,7 @@ function buildPdfBuffer({ subjectName, className, testName, dateStr, totalMarks,
       doc.addPage();
       currentY = 50;
     }
-    doc.moveTo(50, currentY).lineTo(550, currentY).strokeColor("#999999").strokeWidth(1.5).stroke();
+    doc.moveTo(50, currentY).lineTo(550, currentY).strokeColor("#999999").lineWidth(1.5).stroke();
     currentY += 10;
     doc.fontSize(12).fillColor("#1a1a1a");
     doc.text(`Total Enrolled Students: ${students.length}`, 50, currentY);

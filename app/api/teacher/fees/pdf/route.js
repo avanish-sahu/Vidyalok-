@@ -39,7 +39,7 @@ function buildPdfBuffer({ className, submittedAt, students, summary }) {
 
     doc.moveDown(0.3);
     const lineY = doc.y;
-    doc.moveTo(50, lineY).lineTo(550, lineY).strokeColor("#cccccc").strokeWidth(1).stroke();
+    doc.moveTo(50, lineY).lineTo(550, lineY).strokeColor("#cccccc").lineWidth(1).stroke();
     doc.moveDown(0.5);
 
     let currentY = doc.y + 4;
@@ -57,7 +57,7 @@ function buildPdfBuffer({ className, submittedAt, students, summary }) {
 
     currentY += 10;
     if (currentY > 700) { doc.addPage(); currentY = 50; }
-    doc.moveTo(50, currentY).lineTo(550, currentY).strokeColor("#999999").strokeWidth(1.5).stroke();
+    doc.moveTo(50, currentY).lineTo(550, currentY).strokeColor("#999999").lineWidth(1.5).stroke();
     currentY += 8;
     doc.fontSize(11).fillColor("#1a1a1a");
     doc.text("TOTALS", 50, currentY, { width: 230 });
